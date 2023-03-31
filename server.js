@@ -12,6 +12,7 @@ const requestListener = (req, res) => {
   req.on("data", (chunk) => {
     data += chunk;
   });
+  let cookies = cookieParser(req.headers.cookie);
 
   req.on("end", () => {
     let dataObj = qs.parse(data);
@@ -62,28 +63,36 @@ const requestListener = (req, res) => {
         res.write("Internal server error");
       }
     } else if (req.url === "/post" && req.method === "POST") {
-      let cookies = cookieParser(req.headers.cookie);
       if (cookies.userId === `${user.id}` && cookies.authorized === "true") {
-        try {
-          fs.writeFile(
-            `./files/${dataObj.filename}`,
-            `${dataObj.content}`,
-            (err) => {}
-          );
-          res.statusCode = 200;
-          res.write(
-            JSON.stringify({
-              success: true,
-              result: "Файл успешно создан",
-            })
-          );
-        } catch (err) {
+        if (!fs.existsSync(`./files/${dataObj.filename}`)) {
+          try {
+            fs.writeFileSync(
+              `./files/${dataObj.filename}`,
+              `${dataObj.content}`
+            );
+            res.statusCode = 200;
+            res.write(
+              JSON.stringify({
+                success: true,
+                result: "Файл успешно создан",
+              })
+            );
+          } catch (err) {
+            res.statusCode = 500;
+            res.write(
+              JSON.stringify({
+                success: true,
+                result: "Ошибка при создании файла",
+                error: err,
+              })
+            );
+          }
+        } else {
           res.statusCode = 500;
           res.write(
             JSON.stringify({
               success: true,
-              result: "Ошибка при создании файла",
-              error: err,
+              result: "Такой файл уже существует",
             })
           );
         }
@@ -97,8 +106,44 @@ const requestListener = (req, res) => {
         );
       }
     } else if (req.url === "/delete" && req.method === "DELETE") {
-      res.statusCode = 200;
-      res.write("success");
+      if (cookies.userId === `${user.id}` && cookies.authorized === "true") {
+        if (fs.existsSync(`./files/${dataObj.filename}`)) {
+          try {
+            fs.unlinkSync(`./files/${dataObj.filename}`);
+            res.statusCode = 200;
+            res.write(
+              JSON.stringify({
+                success: true,
+                result: "Файл успешно удален",
+              })
+            );
+          } catch (err) {
+            res.statusCode = 500;
+            res.write(
+              JSON.stringify({
+                success: false,
+                result: "Ошибка при удалении файла",
+              })
+            );
+          }
+        } else {
+          res.statusCode = 500;
+          res.write(
+            JSON.stringify({
+              success: false,
+              result: "Файл не найден",
+            })
+          );
+        }
+      } else {
+        res.statusCode = 401;
+        res.write(
+          JSON.stringify({
+            success: false,
+            result: "Вы не авторизованы",
+          })
+        );
+      }
     } else if (req.url === "/redirect" && req.method === "GET") {
       res.statusCode = 200;
       res.write(
@@ -108,7 +153,6 @@ const requestListener = (req, res) => {
       res.statusCode = 405;
       res.write("HTTP method not allowed");
     }
-
     res.end();
   });
 };
