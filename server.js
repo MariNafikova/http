@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const qs = require("querystring");
 const user = require("./db.js");
+const { cookieParser } = require("./cookieParser");
 
 const host = "localhost";
 const port = 8000;
@@ -32,7 +33,6 @@ const requestListener = (req, res) => {
               new Date(new Date().setDate(new Date().getDate() + 2)),
           ],
         });
-        res.statusCode = 200;
         res.write(
           JSON.stringify({
             success: true,
@@ -62,8 +62,40 @@ const requestListener = (req, res) => {
         res.write("Internal server error");
       }
     } else if (req.url === "/post" && req.method === "POST") {
-      res.statusCode = 200;
-      res.write("success");
+      let cookies = cookieParser(req.headers.cookie);
+      if (cookies.userId === `${user.id}` && cookies.authorized === "true") {
+        try {
+          fs.writeFile(
+            `./files/${dataObj.filename}`,
+            `${dataObj.content}`,
+            (err) => {}
+          );
+          res.statusCode = 200;
+          res.write(
+            JSON.stringify({
+              success: true,
+              result: "Файл успешно создан",
+            })
+          );
+        } catch (err) {
+          res.statusCode = 500;
+          res.write(
+            JSON.stringify({
+              success: true,
+              result: "Ошибка при создании файла",
+              error: err,
+            })
+          );
+        }
+      } else {
+        res.statusCode = 401;
+        res.write(
+          JSON.stringify({
+            success: false,
+            result: "Вы не авторизованы",
+          })
+        );
+      }
     } else if (req.url === "/delete" && req.method === "DELETE") {
       res.statusCode = 200;
       res.write("success");
