@@ -20,17 +20,16 @@ const requestListener = (req, res) => {
         dataObj.username === user.username &&
         dataObj.password === user.password
       ) {
-        console.log("Authorization success");
         res.writeHead(200, {
           "Set-Cookie": [
             "userId=" +
               user.id +
               "; expires=" +
-              new Date(new Date().getTime() + 30 * 60000).toUTCString(),
+              new Date(new Date().setDate(new Date().getDate() + 2)),
             "authorized=" +
               true +
               "; expires=" +
-              new Date(new Date().getTime() + 30 * 60000).toUTCString(),
+              new Date(new Date().setDate(new Date().getDate() + 2)),
           ],
         });
         res.statusCode = 200;
@@ -42,7 +41,6 @@ const requestListener = (req, res) => {
           })
         );
       } else {
-        console.log("Authorization fail");
         res.statusCode = 401;
         res.write(
           JSON.stringify({
